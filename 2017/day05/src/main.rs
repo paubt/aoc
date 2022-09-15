@@ -36,11 +36,13 @@ fn part2(mut instruction_mem: Vec<i32>) -> u32 {
 }
 
 fn main() {
-    let input = fs::read_to_string("../data/day5/input.txt").unwrap();
-    let mut instruction_mem: Vec<i32> = input.lines().fold(vec![], |mut acc, l| {
-        acc.push(l.parse::<i32>().unwrap());
-        acc
-    });
+    let mut instruction_mem: Vec<i32> = fs::read_to_string("../data/day5/input.txt")
+        .unwrap()
+        .lines()
+        .fold(vec![], |mut acc, l| {
+            acc.push(l.parse::<i32>().unwrap());
+            acc
+        });
     println!(
         "day 2 solution part 1: {} part 2: {}",
         part1(instruction_mem.clone()),
