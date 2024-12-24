@@ -1,8 +1,9 @@
 use std::fs;
 use std::fmt;
 
+#[derive(Clone)]
 struct Zelle {
-    obsacle: bool,
+    obstacle: bool,
     new_obstacle: bool,
     visited_by_north: bool,
     visited_by_south: bool,
@@ -13,7 +14,7 @@ struct Zelle {
 
 fn create_obstacle_cell() -> Zelle {
     Zelle { 
-        obsacle: true, 
+        obstacle: true, 
         new_obstacle: false, 
         visited_by_north: false, 
         visited_by_south: false, 
@@ -25,7 +26,7 @@ fn create_obstacle_cell() -> Zelle {
 
 fn create_empty_cell() -> Zelle {
     Zelle { 
-        obsacle: false, 
+        obstacle: false, 
         new_obstacle: false, 
         visited_by_north: false, 
         visited_by_south: false, 
@@ -44,7 +45,7 @@ impl fmt::Display for Zelle {
         // is very similar to `println!`.
         if self.new_obstacle {
             write!(f, "O")
-        } else if self.obsacle {
+        } else if self.obstacle {
             write!(f, "X")
         }else if self.turn || ((self.visited_by_north || self.visited_by_south) && 
                                (self.visited_by_east || self.visited_by_west)){
@@ -59,14 +60,14 @@ impl fmt::Display for Zelle {
         
     }
 }
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 enum Direction {
    North,
    West,
    South,
    East 
 }  
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Guard {
     x: usize,
     y: usize,
@@ -120,7 +121,7 @@ fn part1(input: String) -> String
             Direction::West  =>  {if g.x == 0 {break;} new_x  -= 1},
             Direction::East  =>  {if g.x == max_x - 1 {break;} new_x += 1}
         }
-        if map[new_y][new_x].obsacle == true{
+        if map[new_y][new_x].obstacle == true{
             g.heading = turn_right(g.heading);
             map[g.y][g.x].turn = true;
         } else  {
@@ -141,15 +142,15 @@ fn part1(input: String) -> String
         Direction::South => map[g.y][g.x].visited_by_south = true,
         Direction::East => map[g.y][g.x].visited_by_east = true,
     }
-    print!("Step {}\n", i);
-    i += 1;
-    dbg!(&g);
-    for col in &map {
-        for ele in col {
-            print!("{}",ele);
-        }
-        print!("\n");
-    }
+    // print!("Step {}\n", i);
+    // i += 1;
+    // dbg!(&g);
+    // for col in &map {
+    //     for ele in col {
+    //         print!("{}",ele);
+    //     }
+    //     print!("\n");
+    // }
     // get the amount of visited cells
     let sum_visited = map.iter()
         .fold(0, |acc, col| acc + col.iter()
@@ -162,68 +163,176 @@ fn part1(input: String) -> String
     sum_visited.to_string()
 }
 
+fn detect_if_loop(mut map: Vec<Vec<Zelle>>, mut g: Guard) -> bool {
+    let max_y = map.len() ;
+    let max_x = map.first().unwrap().len() ;
+    let mut i = 0;
+    loop
+    {
+        // print!("Step {}\n", i);
+        i += 1;
+        if i >= 10000 {
+            return false;
+        }
+        // dbg!(&g);
+        // for col in &map {
+        //     for ele in col {
+        //         print!("{}",ele);
+        //     }
+        //     print!("\n");
+        // }
+        let mut new_x = g.x;
+        let mut new_y = g.y;
+        match g.heading {
+            Direction::North =>  {if g.y == 0 {return false;}  new_y -= 1},
+            Direction::South =>  {if g.y == max_y - 1 {return false;} new_y  += 1},
+            Direction::West  =>  {if g.x == 0 {return false;} new_x  -= 1},
+            Direction::East  =>  {if g.x == max_x - 1 {return false;} new_x += 1}
+        }
+        if map[new_y][new_x].obstacle == true || map[new_y][new_x].new_obstacle == true{
+            g.heading = turn_right(g.heading);
+            map[g.y][g.x].turn = true;
+        } else {
+            match g.heading {
+                Direction::North => {
+                    map[g.y][g.x].visited_by_north = true;
+                    if map[new_y][new_x].visited_by_north == true {
+                        break;
+                    }
+                },
+                Direction::West => {
+                    map[g.y][g.x].visited_by_west = true;
+                    if map[new_y][new_x].visited_by_west == true {
+                        break;
+                    }
+                },
+                Direction::South => {
+                    map[g.y][g.x].visited_by_south = true;
+                    if map[new_y][new_x].visited_by_south == true {
+                        break;
+                    }
+                },
+                Direction::East => {
+                    map[g.y][g.x].visited_by_east = true;
+                    if map[new_y][new_x].visited_by_east == true {
+                        break;
+                    }
+                },
+            }
+            g.y = new_y;
+            g.x = new_x;
+        }
+    }
+    // match g.heading {
+    //     Direction::North => map[g.y][g.x].visited_by_north = true,
+    //     Direction::West => map[g.y][g.x].visited_by_west = true,
+    //     Direction::South => map[g.y][g.x].visited_by_south = true,
+    //     Direction::East => map[g.y][g.x].visited_by_east = true,
+    // }
+    print!("loop after {}\n", i);
+    dbg!(&g);
+    for col in &map {
+        for ele in col {
+            print!("{}",ele);
+        }
+        print!("\n");
+    } 
+    true
+}
+
 fn part2(input: String) -> String
 {
-    // let mut g: Option<Guard> = None;
-    // let mut map = input.lines().enumerate()
-    //     .map(|(iy,l)| l.chars().enumerate()
-    //             .map(|(ix,c)| match c {
-    //                 '#' => Zelle{obsacle:true, visited:false},
-    //                 '^' => {g = Some(Guard{x:ix, y:iy, heading: Direction::North}); 
-    //                        Zelle{obsacle:false, visited:false}}
-    //                 '.' => Zelle{obsacle:false, visited:false},
-    //                 _ => panic!("something other than # and . in input")
-    //             })
-    //             .collect::<Vec<Zelle>>())
-    //     .collect::<Vec<Vec<Zelle>>>();
-    // let mut g = g.unwrap();
-    // let max_y = map.len() ;
-    // let max_x = map.first().unwrap().len() ;
-    // let mut i = 0;
-    // loop
-    // {
-    //     // print!("Step {}\n", i);
-    //     // i += 1;
-    //     // dbg!(&g);
-    //     // for col in &map {
-    //     //     for ele in col {
-    //     //         print!("{}",ele);
-    //     //     }
-    //     //     print!("\n");
-    //     // }
+    let mut g: Option<Guard> = None;
+    let mut map = input.lines().enumerate()
+        .map(|(iy,l)| l.chars().enumerate()
+                .map(|(ix,c)| match c {
+                    '#' => create_obstacle_cell(),
+                    '^' => {g = Some(Guard{x:ix, y:iy, heading: Direction::North}); 
+                           create_empty_cell()}
+                    '.' => create_empty_cell(),
+                    _ => panic!("something other than # and . in input")
+                })
+                .collect::<Vec<Zelle>>())
+        .collect::<Vec<Vec<Zelle>>>();
+    let mut g = g.unwrap();
+    let max_y = map.len() ;
+    let max_x = map.first().unwrap().len() ;
+    let mut i = 0;
+    let mut loop_count = 0;
+    loop
+    {
+        // print!("Step {}\n", i);
+        // i += 1;
+        // dbg!(&g);
+        // for col in &map {
+        //     for ele in col {
+        //         print!("{}",ele);
+        //     }
+        //     print!("\n");
+        // }
 
-    //     let mut new_x = g.x;
-    //     let mut new_y = g.y;
-    //     match g.heading {
-    //         Direction::North =>  {if g.y == 0 {break;}  new_y -= 1},
-    //         Direction::South =>  {if g.y == max_y - 1 {break;} new_y  += 1},
-    //         Direction::West  =>  {if g.x == 0 {break;} new_x  -= 1},
-    //         Direction::East  =>  {if g.x == max_x - 1 {break;} new_x += 1}
+        // Clac the next position.
+        let mut new_x = g.x;
+        let mut new_y = g.y;
+        match g.heading {
+            Direction::North =>  {if g.y == 0 {break;}  new_y -= 1},
+            Direction::South =>  {if g.y == max_y - 1 {break;} new_y  += 1},
+            Direction::West  =>  {if g.x == 0 {break;} new_x  -= 1},
+            Direction::East  =>  {if g.x == max_x - 1 {break;} new_x += 1}
+        }
+        // if obstacle is allready infront of the guard.
+        if map[new_y][new_x].obstacle == true {
+            g.heading = turn_right(g.heading);
+            map[g.y][g.x].turn = true;
+        } else {
+            // check if loop when a obstacle is placed infront of the guard.
+            // keep moving on the original map
+            {
+                // Clone the map.
+                let mut map_with_new_obstacle = map.to_vec();
+                // Set the next Cell to obstacle.
+                map_with_new_obstacle[new_y][new_x].new_obstacle = true;
+                // check if there is a loop
+                if detect_if_loop(map_with_new_obstacle, g.clone()) {
+                    loop_count += 1;
+                }
+            }
+            // Do the normal advance of the guard.
+            match g.heading {
+                Direction::North => map[g.y][g.x].visited_by_north = true,
+                Direction::West => map[g.y][g.x].visited_by_west = true,
+                Direction::South => map[g.y][g.x].visited_by_south = true,
+                Direction::East => map[g.y][g.x].visited_by_east = true,
+            }
+            g.y = new_y;
+            g.x = new_x;
+        }
+    }
+    match g.heading {
+        Direction::North => map[g.y][g.x].visited_by_north = true,
+        Direction::West => map[g.y][g.x].visited_by_west = true,
+        Direction::South => map[g.y][g.x].visited_by_south = true,
+        Direction::East => map[g.y][g.x].visited_by_east = true,
+    }
+    // print!("Step {}\n", i);
+    // i += 1;
+    // dbg!(&g);
+    // for col in &map {
+    //     for ele in col {
+    //         print!("{}",ele);
     //     }
-    //     if map[new_y][new_x].obsacle == true{
-    //         g.heading = turn_right(g.heading);
-    //     }else  {
-    //         map[g.y][g.x].visited = true;
-    //         g.y = new_y;
-    //         g.x = new_x;
-    //     }
+    //     print!("\n");
     // }
-    // map[g.y][g.x].visited = true;
-    // // print!("Step {}\n", i);
-    // // i += 1;
-    // // dbg!(&g);
-    // // for col in &map {
-    // //     for ele in col {
-    // //         print!("{}",ele);
-    // //     }
-    // //     print!("\n");
-    // // }
-    // // get the amount of visited cells
+    // get the amount of visited cells
     // let sum_visited = map.iter()
     //     .fold(0, |acc, col| acc + col.iter()
-    //         .fold(0, |acc, ele| if ele.visited {acc+1} else {acc}));
-    // sum_visited.to_string()    
-    "todo".to_string()
+    //         .fold(0, |acc, ele| 
+    //             if ele.visited_by_north ||
+    //                ele.visited_by_south ||
+    //                ele.visited_by_west ||
+    //                ele.visited_by_east
+    //                 {acc+1} else {acc}));
+    loop_count.to_string()
 }
 
 fn read_in_input(path: &str) -> String 
